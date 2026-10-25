@@ -25,8 +25,6 @@ scripthub/
 
 用 [PDFMathTranslate (pdf2zh)](https://github.com/PDFMathTranslate/PDFMathTranslate) + Ollama 本地模型翻译大型 PDF 教材。单文件脚本，带 Rich 全屏分区式监控面板。
 
-**核心价值：版式保持不变。** 译文按原文的位置重新排版，图片、代码块、列表层级都留在原位，不是简单地把文字替换掉——对于带大量代码示例的技术书，这点最要紧。
-
 ### 效果预览
 
 同一页的原文与译文对照：
@@ -35,7 +33,7 @@ scripthub/
 
 ![原文与译文对照（二）](docs/images/compare-2.png)
 
-可以看到标题层级、代码块、带编号的列表项全部保持原版式，只有正文语言变成中文。
+根据书本格式的不同，翻译的效果也会不一样。上图里代码内容可能会被模型强制翻译成不伦不类的内容。
 
 ### 功能
 
@@ -82,7 +80,6 @@ TTY 下默认启用，五区分区显示，全部信息一屏看完：
 pip install uv
 uv tool install --python 3.12 pdf2zh
 pip install pymupdf rich
-ollama pull Hy-MT2
 ```
 
 ### 用法
@@ -158,27 +155,3 @@ python translate_pdf2zh.py "book.pdf" --model Hy-MT2 --no-repair --keep-chunks
 | `<stem>-dual.pdf` | 原文 / 译文左右对照，便于校对 |
 
 中断时 `chunks/` 里保留已完成的单片产物，续跑靠的就是它们。
-
-## LICENSE
-
-MIT License
-
-Copyright (c) 2026 midautuhub
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
