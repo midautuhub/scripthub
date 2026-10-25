@@ -12,6 +12,11 @@ by deepseek-v4-flash + Hermes Agent
 scripthub/
 ├── python/
 │   └── translate_pdf2zh.py   # pdf2zh + Ollama 本地模型翻译大型 PDF
+├── docs/
+│   └── images/
+│       ├── panel.png         # 监控面板截图
+│       ├── compare-1.png     # 原文/译文对照（一）
+│       └── compare-2.png     # 原文/译文对照（二）
 ├── README.md
 └── LICENSE
 ```
@@ -20,17 +25,46 @@ scripthub/
 
 用 [PDFMathTranslate (pdf2zh)](https://github.com/PDFMathTranslate/PDFMathTranslate) + Ollama 本地模型翻译大型 PDF 教材。单文件脚本，带 Rich 全屏分区式监控面板。
 
+**核心价值：版式保持不变。** 译文按原文的位置重新排版，图片、代码块、列表层级都留在原位，不是简单地把文字替换掉——对于带大量代码示例的技术书，这点最要紧。
+
+### 效果预览
+
+同一页的原文与译文对照：
+
+![原文与译文对照（一）](docs/images/compare-1.png)
+
+![原文与译文对照（二）](docs/images/compare-2.png)
+
+可以看到标题层级、代码块、带编号的列表项全部保持原版式，只有正文语言变成中文。
+
 ### 功能
 
-- **整本或指定页范围翻译**：按页切片（默认 20 页/片）逐片调用 `pdf2zh -s ollama`
+- **整本或指定页范围翻译**：按页切片（默认 20 页/片）逐片调用 `pdf2zh -s ollama`，单片翻完立刻落盘，不攒到最后
 - **断点续跑**：每片完成即写入续跑清单 `<stem>.manifest.json`；中断后重跑同一命令，已完成片自动跳过，失败片自动重试；全部片成功后才合并（`--merge` 默认开启）
 - **前置自检**：PDF 是否存在 / 页数 / 是否文字版 / 全书字数，Ollama 服务与指定模型是否就绪，`pdf2zh` 命令是否可执行
 - **前置清洗**：重写 PDF 修掉非法 dict 键，规避 pymupdf 保存阶段崩溃（`--no-repair` 可跳过）
 - **分片合并**：`garbage=4` + `clean` 清理重复与未引用对象，合并成功后默认删除分片目录（`--keep-chunks` 保留）
 - **卡死可诊断**：单片超时、`pdf2zh` 打完 100% 后静默收尾、按页进度前进计时，判定「仍在推进」与「真卡死」
-- **监控面板**（TTY 下默认启用）五个区：PDF 文件信息 ｜ Ollama 运行状态（连接 / 端口 / 模型 / 显存）｜ 处理阶段五步 ｜ 总体进度条 ｜ 带级别与时间戳的执行日志
 - **语言参数**：默认英译中，`--src-lang` / `--dst-lang` 可改；也接受 `English` / `中文` / `Chinese` / `zh-TW` 这类写法，脚本归一成 pdf2zh 语言代码
 - **自定义翻译提示词**：`--prompt-file <文件>`，默认不启用
+
+### 监控面板
+
+TTY 下默认启用，五区分区显示，全部信息一屏看完：
+
+![脚本运行界面](docs/images/panel.png)
+
+| 分区 | 显示内容 |
+|---|---|
+| **PDF 文件信息** | 文件名、文件大小、页数、字数、是否文字版、前置清洗结果 |
+| **Ollama 运行状态** | 服务连接状态、地址与端口、使用中的模型、显存占用、是否已加载 |
+| **处理阶段** | 五个序号卡片：前置处理 → 分片文件 → 翻译内容 → 合并内容 → 输出 PDF，当前阶段高亮并显示进度 |
+| **总体进度** | 全屏进度条 + 已完成片数 / 总片数 |
+| **执行日志** | 带级别（INFO/WARN）与时间戳，显示最新几条；底部标注日志总条数 |
+
+日志行会明确区分 **「输出静默」** 和 **「页进度静默」**，并附上 pdf2zh 的最后一行输出。这样你就不会把「模型正在吐字但还没换行」误判成「卡死」。
+
+非交互环境（重定向、CI、管道）下自动退回普通滚动日志，也可以用 `--plain` 手动指定。
 
 ### 依赖
 
@@ -85,6 +119,24 @@ python translate_pdf2zh.py "book.pdf" --src-lang English --dst-lang 中文
 python translate_pdf2zh.py "book.pdf" --prompt-file my_prompt.txt
 ```
 
+### 常用参数
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `--model` | `Hy-MT2` | Ollama 模型名，TTY 下不填可交互选择 |
+| `--pages` | 全本 | 页范围，如 `1-50` 或 `1-5,20-30` |
+| `--pages-per-chunk` | `20` | 每片页数 |
+| `--timeout` | `3600` | 单片超时（秒） |
+| `--keep-alive` | `30m` | Ollama 模型常驻时长 |
+| `--threads` | `1` | pdf2zh 并发线程，调高容易 OOM |
+| `--out-dir` | PDF 同级 `output/` | 输出目录 |
+| `--no-merge` | 关闭 | 不合并分片，保留加工中间态 |
+| `--keep-chunks` | 关闭 | 合并后保留分片文件 |
+| `--no-repair` | 关闭 | 跳过前置 PDF 清洗 |
+| `--no-skip-subset-fonts` | 关闭 | 恢复字体子集化；默认跳过，因为超大 CJK 字体子集化开销超线性，且某些 PDF 会在此阶段永久挂死（产物反而小 13-16MB/册） |
+| `--stop-on-error` | 关闭 | 任一片失败即停，不再尝试后续片 |
+| `--plain` | 关闭 | 强制普通日志，不用面板 |
+
 ### ⚠️ 续跑的两个坑
 
 1. **`chunks/` 必须还在**。跳过判定依据是 `chunks/` 里仍存在该片的 `-mono-sliced` / `-dual-sliced` 产物。合并成功且未加 `--keep-chunks` 时会删掉分片目录，此时清单虽仍标「已完成」，重跑会整本重译。
@@ -96,6 +148,37 @@ python translate_pdf2zh.py "book.pdf" --prompt-file my_prompt.txt
 python translate_pdf2zh.py "book.pdf" --model Hy-MT2 --no-repair --keep-chunks
 ```
 
+### 输出文件
+
+翻译完成后在输出目录得到两个 PDF：
+
+| 文件 | 内容 |
+|---|---|
+| `<stem>-mono.pdf` | 纯译文，单栏，页面尺寸与原文一致 |
+| `<stem>-dual.pdf` | 原文 / 译文左右对照，便于校对 |
+
+中断时 `chunks/` 里保留已完成的单片产物，续跑靠的就是它们。
+
 ## LICENSE
 
-[MIT](LICENSE)
+MIT License
+
+Copyright (c) 2026 midautuhub
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
